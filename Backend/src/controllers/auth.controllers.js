@@ -91,6 +91,8 @@ export const update_profile = async (req,res)=>{
         const update_user=await User.findByIdAndUpdate(userId,{profilepic:upload_response.secure_url},{new:true});
         res.status(200).json(update_user);
     } catch (error) {
+        console.log("Error in update_profile controller",error.message);
+        res.status(500).json({ message: "Internal Server Error" });
         
     }
 }
@@ -102,3 +104,17 @@ export const checkAuth= async (req,res)=>{
         res.status(500).json({message:"Internal Server Error"});
     }
 }
+export const googleCallback = async (req, res) => {
+    try {
+      if (!req.user) {
+        throw new Error('No user provided by Passport');
+      }
+      console.log('Google OAuth user:', req.user); // Should show authMethod: 'google'
+      const token = generate_token(req.user._id, res);
+      console.log('Redirecting to / with token:', token);
+      res.redirect(`${process.env.FRONTEND_URL}/`);
+    } catch (error) {
+      console.log('Error in Google callback:', error.message);
+      res.redirect(`${process.env.FRONTEND_URL}/auth-error`);
+    }
+  };

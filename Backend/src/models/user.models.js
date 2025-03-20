@@ -1,26 +1,53 @@
 import mongoose from 'mongoose';
-const  userschema= new mongoose.Schema(
+import crypto from 'crypto'; // Node.js built-in module for generating random strings
+
+const userSchema = new mongoose.Schema(
     {
-        email:{
-            type:String, 
-            required:true,
-            unique:true,
+        email: {
+            type: String, 
+            required: true,
+            unique: true,
         },
-        fullname:{
-            type:String,
-            required:true,
+        fullname: {
+            type: String,
+            required: true,
         },
-        password:{
-            type:String,
-            required:true,
-            minlength:6,
+        password: {
+            type: String,
+            required: function() {
+                // Only require password for non-OAuth users
+                return !this.googleId;
+            },
+            minlength: 6,
         },
-        profilepic:{
-                type:String,
-                default:"",
+        profilepic: {
+            type: String,
+            default: "",
         },
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true, // Only enforces uniqueness if field exists
+        },
+        authMethod: {
+            type: String,
+            required: true,
+            enum: ['local', 'google'],
+            default: 'local'
+        }
     },
-    {timestamps:true}
-)
-const User=mongoose.model('User',userschema);
+    {timestamps: true}
+);
+
+// Pre-save middleware to handle OAuth users
+userSchema.pre('save', function(next) {
+    // If this is a Google user and no password is set, generate a random one
+    if (this.googleId && !this.password) {
+        // Generate a secure random string that won't be used for actual login
+        this.password = crypto.randomBytes(32).toString('hex');
+    }
+    next();
+});
+
+const User = mongoose.model('User', userSchema);
 export default User;
