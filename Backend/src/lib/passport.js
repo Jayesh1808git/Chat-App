@@ -20,6 +20,10 @@ passport.use(
         let user = await User.findOne({ googleId: profile.id });
         if (user) {
           console.log('Found existing Google user:', user);
+          if (user.authMethod !== 'google') {
+            user.authMethod = 'google';
+            await user.save();
+          }
           return done(null, user);
         }
 

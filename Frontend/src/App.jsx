@@ -39,7 +39,7 @@ const App = () => {
       <Navbar />
 
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
         <Route path="/auth-success" element={<AuthSucess/>} />
         <Route path="/auth-error" element={<div>Authentication failed. Please try again.</div>} />
         <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
