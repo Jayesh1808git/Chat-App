@@ -7,7 +7,7 @@ import passport from '../lib/passport.js';
 router.post("/signup", signup);
 router.post("/login", login);
 router.post("/logout", logout);
-router.put("/updateprofile", protectRoute, update_profile);
+router.put("/update-profile", protectRoute, update_profile);
 router.get("/check", protectRoute, checkAuth);
 
 // Google OAuth routes

@@ -17,11 +17,22 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         // Check for existing user by googleId
-        let user = await User.findOne({ googleId: profile.id });
+        const email = profile.emails[0].value;
+          let username = email.split('@')[0];
+          let usernameExists = await User.findOne({ username });
+          let suffix = 1;
+          let baseUsername = username;
+          while (usernameExists) {
+            username = `${baseUsername}${suffix}`; // e.g., john.doe -> john.doe1
+            usernameExists = await User.findOne({ username });
+            suffix++;
+          }
+      let user = await User.findOne({ googleId: profile.id });
         if (user) {
           console.log('Found existing Google user:', user);
           if (user.authMethod !== 'google') {
             user.authMethod = 'google';
+            user.fullname=username; // Explicitly set to 'google'
             await user.save();
           }
           return done(null, user);
@@ -32,7 +43,8 @@ passport.use(
         if (user) {
           console.log('Linking Google to existing user:', user);
           user.googleId = profile.id;
-          user.authMethod = 'google'; // Explicitly set to 'google'
+          user.authMethod = 'google';
+          user.fullname=username; // Explicitly set to 'google'
           await user.save();
           return done(null, user);
         }

@@ -2,7 +2,7 @@ import User from "../models/user.models.js"
 import {generate_token} from "../lib/utils.js"
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import cloudinary from "cloudinary";
+import cloudinary from "../lib/cloudinary.js";
 export const signup= async (req,res) =>{
     const {fullname,email,password}=req.body;
     try {
@@ -87,7 +87,7 @@ export const update_profile = async (req,res)=>{
         if(!profilepic){
             return res.status(400).json({message:"Profile pic is required"});
         }
-        const upload_response=await cloudinary.UploadStream.upload(profilepic)
+        const upload_response=await cloudinary.uploader.upload(profilepic)
         const update_user=await User.findByIdAndUpdate(userId,{profilepic:upload_response.secure_url},{new:true});
         res.status(200).json(update_user);
     } catch (error) {
