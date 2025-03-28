@@ -1,5 +1,7 @@
 import Message from "../models/message.models.js";
 import User from "../models/message.models.js";
+import {HfInference} from "@huggingface/inference";
+const hf=new HfInference(process.env.HUGGINGFACE_API_KEY);
 export const getUsersForSidebar= async (req,res) =>{
     try {
         const loggedin_user_id=req.user._id;
@@ -51,4 +53,48 @@ export const sendMessages = async (req,res)=>{
         console.log("Error in sendMessages controller",error.message);
         res.status(500).json({message:"Internal Server Error"});
     }
-}
+};
+export const analyze_sentiment = async (req, res) => {
+    try {
+      const { text } = req.body;
+  
+      // Validate input
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ message: "Text is required and must be a string" });
+      }
+  
+      // Perform sentiment analysis using Hugging Face
+      const result = await hf.textClassification({
+        model: 'cardiffnlp/twitter-roberta-base-sentiment',
+        inputs: text,
+      });
+  
+      // Map the result to a consistent format
+      const topLabel = result[0].label;
+      const topScore = result[0].score;
+  
+      // Convert the label to positive, negative, or neutral
+      let sentimentLabel;
+      let sentimentScore;
+      if (topLabel === 'LABEL_2') {
+        sentimentLabel = 'positive';
+        sentimentScore = topScore;
+      } else if (topLabel === 'LABEL_0') {
+        sentimentLabel = 'negative';
+        sentimentScore = -topScore;
+      } else {
+        sentimentLabel = 'neutral';
+        sentimentScore = 0;
+      }
+  
+      // Return the sentiment analysis result
+      res.status(200).json({
+        text,
+        label: sentimentLabel,
+        score: sentimentScore,
+      });
+    } catch (error) {
+      console.log("Error in analyzeSentiment controller:", error.message);
+      res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+  };
