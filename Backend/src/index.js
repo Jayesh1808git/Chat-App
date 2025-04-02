@@ -32,7 +32,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use("/api/auth", authRoutes);
-app.use("/api/message", messageRoutes);     //
+app.use("/api/messages", messageRoutes);     //
 
 app.listen(port, () => {
     console.log("Listening on port:" + port);
