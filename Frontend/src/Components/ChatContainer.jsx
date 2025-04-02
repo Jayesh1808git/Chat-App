@@ -18,7 +18,7 @@ const ChatContainer = () => {
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
-
+ 
   useEffect(() => {
     getMessages(selectedUser._id);
 
@@ -59,8 +59,8 @@ const ChatContainer = () => {
                 <img
                   src={
                     message.senderId === authUser._id
-                      ? authUser.profilePic || "/avatar.png"
-                      : selectedUser.profilePic || "/avatar.png"
+                      ? authUser.profilepic || "/avatar.png"
+                      : selectedUser.profilepic || "/avatar.png"
                   }
                   alt="profile pic"
                 />
