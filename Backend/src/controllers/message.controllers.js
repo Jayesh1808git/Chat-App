@@ -49,6 +49,7 @@ export const sendMessages = async (req, res) => {
     });
     await newMessage.save();
     // TODO: Realtime functionality
+    
     res.status(200).json({ message: "Message Sent" });
   } catch (error) {
     console.log("Error in sendMessages controller", error.message);

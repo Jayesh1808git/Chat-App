@@ -7,9 +7,9 @@ import messageRoutes from './routes/message.routes.js';
 import cors from 'cors';
 import passport from './lib/passport.js';
 import session from 'express-session';
-
+import {io,app,server} from "./lib/socket.js";
 dotenv.config();
-const app = express();
+
 const port = process.env.PORT;
 
 app.use(express.json());
@@ -34,7 +34,7 @@ app.use(passport.session());
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);     //
 
-app.listen(port, () => {
+server.listen(port, () => {
     console.log("Listening on port:" + port);
     connectdb();
 });
