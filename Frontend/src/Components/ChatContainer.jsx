@@ -20,6 +20,11 @@ const ChatContainer = () => {
   const messageEndRef = useRef(null);
 
   useEffect(() => {
+    if (!selectedUser?._id) {
+      console.error("No valid selectedUser in ChatContainer:", selectedUser);
+      return;
+    }
+
     getMessages(selectedUser._id);
 
     subscribeToMessages();
