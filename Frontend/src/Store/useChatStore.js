@@ -102,7 +102,6 @@ export const useChatStore = create((set, get) => ({
   },
 
   setSelectedUser: (selectedUser) => {
-    console.log("Setting selectedUser:", selectedUser); // Debug log
     set({ selectedUser });
   },
 
