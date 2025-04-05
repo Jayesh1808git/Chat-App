@@ -62,6 +62,22 @@ export const useChatStore = create((set, get) => ({
       toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
+  deleteMessage:async(messageId)=>{
+    if (!messageId || typeof messageId !== "string" || !messageId.match(/^[0-9a-fA-F]{24}$/)) {
+      console.error("Invalid messageId in deleteMessage:", messageId);
+      toast.error("Invalid message ID");
+      return;
+    }
+      try {
+        await axiosInstance.delete(`/messages/delete/${messageId}`);
+        const { messages } = get();
+        set({ messages: messages.filter((msg) => msg._id !== messageId) });
+        toast.success("Message deleted successfully");
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to delete message");
+      }
+    
+  },
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
