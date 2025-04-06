@@ -11,6 +11,6 @@
     router.post("/analyze_sentiment", protectRoute, analyze_sentiment);
     router.delete("/delete/:id",protectRoute,delete_message);
     router.post("/schedule/:id",protectRoute,scheduleMessage);
-    router.post("/smart_replies",protectRoute,getSmartReplies);
+    router.post("/smart_reply",protectRoute,getSmartReplies);
 
     export default router;

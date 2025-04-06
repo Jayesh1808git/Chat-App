@@ -11,6 +11,7 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isMessagesLoading: false,
   sentiment: null,
+  smartReply:null,
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -159,6 +160,23 @@ export const useChatStore = create((set, get) => ({
     if (socket) {
       socket.off("newMessage");
     }
+  },
+  getSmartReply: async (text) =>{
+    if (!text || typeof text !== "string") {
+      toast.error("Please provide valid text for smart reply");
+      return;
+    }
+
+    try {
+      const res = await axiosInstance.post("/messages/smart_reply", { text });
+      const Reply = res.data.suggestions[0];
+      set({ smartReply: Reply});
+      console.log("Smart reply response:", Reply);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to get smart reply");
+      set({ reply: null });
+    }
+
   },
 
   analyzeSentiment: async (text) => {

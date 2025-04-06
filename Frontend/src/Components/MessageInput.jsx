@@ -1,10 +1,9 @@
-// MessageInput.jsx
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../Store/useChatStore";
 import { Image, Send, X, Brain, Clock, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 
-const MessageInput = () => {
+const MessageInput = ({ lastMessage }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -12,7 +11,38 @@ const MessageInput = () => {
   const [sendAt, setSendAt] = useState(null);
   const [showOptions, setShowOptions] = useState(false);
   const fileInputRef = useRef(null);
-  const { sendMessage, analyzeSentiment, sentiment, scheduleMessage, isMessagesLoading, clearSentiment } = useChatStore();
+  const inputRef = useRef(null);
+  const optionsRef = useRef(null);
+  const {
+    sendMessage,
+    analyzeSentiment,
+    sentiment,
+    scheduleMessage,
+    isMessagesLoading,
+    clearSentiment,
+    smartReply,
+    getSmartReply,
+  } = useChatStore();
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (optionsRef.current && !optionsRef.current.contains(event.target)) {
+        setShowOptions(false);
+      }
+    };
+
+    const handleScroll = () => {
+      setShowOptions(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("scroll", handleScroll);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -84,6 +114,7 @@ const MessageInput = () => {
       setSendAt(null);
       setIsScheduling(false);
       clearSentiment();
+      useChatStore.setState({ smartReply: null });
     } catch (error) {
       console.error("Error in handleSendOrScheduleMessage:", error.response?.data || error);
       toast.error(error.response?.data?.message || "Failed to process message");
@@ -128,6 +159,14 @@ const MessageInput = () => {
     }
   };
 
+  const handleSmartReplyClick = () => {
+    if (smartReply) {
+      setText(smartReply);
+      inputRef.current.focus();
+      useChatStore.setState({ smartReply: null });
+    }
+  };
+
   return (
     <div className="p-6 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-lg">
       {imagePreview && (
@@ -150,6 +189,18 @@ const MessageInput = () => {
       )}
 
       <form onSubmit={handleSendOrScheduleMessage} className="flex flex-col gap-3">
+        {smartReply && (
+          <div className="mb-2">
+            <button
+              type="button"
+              onClick={handleSmartReplyClick}
+              className="btn bg-blue-500 text-white hover:bg-blue-600 rounded-xl px-4 py-2 transition-all"
+            >
+              {smartReply}
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 flex gap-3 items-center relative">
           <div className="relative">
             <button
@@ -161,7 +212,7 @@ const MessageInput = () => {
             </button>
 
             {showOptions && (
-              <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-2 flex flex-col gap-2 z-10">
+              <div ref={optionsRef} className="absolute bottom-full mb-2 left-0 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-2 flex flex-col gap-2 z-10">
                 <button
                   type="button"
                   onClick={handleAnalyzeSentiment}
@@ -186,6 +237,8 @@ const MessageInput = () => {
           </div>
 
           <input
+            id="message-input-field"
+            ref={inputRef}
             type="text"
             className={`w-full input rounded-xl py-6 pl-4 pr-4 transition-all duration-300 focus:ring-4 focus:ring-primary/20 focus:border-primary bg-gray-50 dark:bg-gray-700 text-base ${getInputBorderClass()}`}
             placeholder="Type your message..."

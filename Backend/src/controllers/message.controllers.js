@@ -194,3 +194,41 @@ export const analyze_sentiment = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
+export const getSmartReplies = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ message: "Text is required and must be a string" });
+    }
+
+    const prompt = `Respond to the following message with a short, casual reply: "${text}"`;
+    const suggestions = new Set();
+
+    const result = await hf.textGeneration({
+      model: 'google/flan-t5-small', // Or a larger flan-t5 variant
+      inputs: prompt,
+      parameters: {
+        max_new_tokens: 15, // Adjust as needed for the desired reply length
+        temperature: 0.7,    // You can adjust randomness
+        top_k: 50,
+        top_p: 0.95,
+        repetition_penalty: 1.2,
+        num_return_sequences: 1,
+      },
+    });
+
+    if (result && result.generated_text) {
+      const reply = result.generated_text.trim();
+      if (reply && reply.length > 2) {
+        suggestions.add(reply);
+      }
+    }
+
+    res.status(200).json({ suggestions: Array.from(suggestions) });
+
+  } catch (error) {
+    console.error("Error in getSmartReplies controller:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
