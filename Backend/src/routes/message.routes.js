@@ -1,13 +1,16 @@
-import express from 'express';
-import {protectRoute} from '../middleware/auth.middleware.js';
-import {getUsersForSidebar, getMessages, sendMessages, analyze_sentiment} from '../controllers/message.controllers.js';
+    import express from 'express';
+    import {protectRoute} from '../middleware/auth.middleware.js';
+    import {getUsersForSidebar, getMessages, sendMessages, analyze_sentiment,delete_message,scheduleMessage, getSmartReplies} from '../controllers/message.controllers.js';
 
-const router = express.Router();
+    const router = express.Router();
 
-// Define the more specific route first
-router.get("/users", protectRoute, getUsersForSidebar);
-router.get("/:id", protectRoute, getMessages);
-router.post("/send/:id", protectRoute, sendMessages);
-router.post("/analyze_sentiment", protectRoute, analyze_sentiment);
+  
+    router.get("/users", protectRoute, getUsersForSidebar);
+    router.get("/:id", protectRoute, getMessages);
+    router.post("/send/:id", protectRoute, sendMessages);
+    router.post("/analyze_sentiment", protectRoute, analyze_sentiment);
+    router.delete("/delete/:id",protectRoute,delete_message);
+    router.post("/schedule/:id",protectRoute,scheduleMessage);
+    router.post("/smart_replies",protectRoute,getSmartReplies);
 
-export default router;
+    export default router;

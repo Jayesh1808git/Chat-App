@@ -1,4 +1,3 @@
-// ChatContainer.jsx
 import { useChatStore } from "../Store/useChatStore";
 import { useEffect, useRef, useState } from "react";
 import ChatHeader from "./ChatHeader";
@@ -44,7 +43,7 @@ const ChatContainer = () => {
 
   useEffect(() => {
     if (messageEndRef.current && messages) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messageEndRef.current.scrollIntoView({ behavior: "auto" });
     }
   }, [messages]);
 
@@ -52,18 +51,18 @@ const ChatContainer = () => {
     event.preventDefault();
     const { clientX: mouseX, clientY: mouseY } = event;
     const containerRect = chatContainerRef.current.getBoundingClientRect();
-    const contextMenuHeight = 80; // Height for two buttons
-    const contextMenuWidth = 100; // Approximate width of context menu
+    const contextMenuHeight = 80;
+    const contextMenuWidth = 100;
 
     const isSender = senderId === authUser._id;
     const x = isSender
-      ? mouseX - containerRect.left - contextMenuWidth - 20 // Shift left for sender (right-aligned)
-      : mouseX - containerRect.left + 20; // Shift right for receiver (left-aligned)
+      ? mouseX - containerRect.left - contextMenuWidth - 20
+      : mouseX - containerRect.left + 20;
     const y = mouseY - containerRect.top;
 
     setContextMenu({
       visible: true,
-      x: Math.max(0, Math.min(x, containerRect.width - contextMenuWidth)), // Keep within container
+      x: Math.max(0, Math.min(x, containerRect.width - contextMenuWidth)),
       y: y + contextMenuHeight > containerRect.height ? y - contextMenuHeight : y,
       text,
       messageId,
@@ -121,42 +120,63 @@ const ChatContainer = () => {
       <ChatHeader />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`} // Sender on right, receiver on left
-            ref={messageEndRef}
-            onContextMenu={(e) => handleRightClick(e, message.text, message._id, message.senderId)}
-          >
-            <div className="chat-image avatar">
-              <div className="size-10 rounded-full border">
-                <img
-                  src={
-                    message.senderId === authUser._id
-                      ? authUser.profilepic || "/avatar.png"
-                      : selectedUser.profilepic || "/avatar.png"
-                  }
-                  alt="profile pic"
-                />
+        {messages.map((message) => {
+          const isSender = message.senderId === authUser._id;
+          const isReceiver = message.receiverId === authUser._id;
+          const isScheduledAndFuture = message.isScheduled && new Date(message.scheduledAt) > new Date();
+
+          // Hide future scheduled messages from the receiver
+          if (isScheduledAndFuture && isReceiver) return null;
+
+          return (
+            <div
+              key={message._id}
+              className={`chat ${isSender ? "chat-end" : "chat-start"}`}
+              ref={messageEndRef}
+              onContextMenu={(e) => handleRightClick(e, message.text, message._id, message.senderId)}
+            >
+              <div className="chat-image avatar">
+                <div className="size-10 rounded-full border">
+                  <img
+                    src={
+                      isSender
+                        ? authUser.profilepic || "/avatar.png"
+                        : selectedUser.profilepic || "/avatar.png"
+                    }
+                    alt="profile pic"
+                  />
+                </div>
+              </div>
+              <div className="chat-header mb-1">
+                <time className="text-xs opacity-50 ml-1">
+                {formatMessageTime(message.isScheduled ? message.scheduledAt : message.createdAt)}
+
+                </time>
+              </div>
+              <div className="chat-bubble flex flex-col">
+                {message.image && (
+                  <img
+                    src={message.image}
+                    alt="Attachment"
+                    className="sm:max-w-[200px] rounded-md mb-2"
+                  />
+                )}
+                {message.text && <p>{message.text}</p>}
+                {isSender && (
+  <>
+                  {message.isScheduled && !message.isSent && (
+                    <span className="text-xs text-yellow-500 mt-1">Scheduled</span>
+                  )}
+                  {message.isScheduled && message.isSent && (
+                    <span className="text-xs text-yellow-500 mt-1">Message Sent</span>
+                  )}
+                </>
+              )}
+                
               </div>
             </div>
-            <div className="chat-header mb-1">
-              <time className="text-xs opacity-50 ml-1">
-                {formatMessageTime(message.createdAt)}
-              </time>
-            </div>
-            <div className="chat-bubble flex flex-col">
-              {message.image && (
-                <img
-                  src={message.image}
-                  alt="Attachment"
-                  className="sm:max-w-[200px] rounded-md mb-2"
-                />
-              )}
-              {message.text && <p>{message.text}</p>}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {contextMenu.visible && (

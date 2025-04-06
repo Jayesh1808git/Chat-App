@@ -78,7 +78,34 @@ export const useChatStore = create((set, get) => ({
       }
     
   },
+  scheduleMessage: async (messageData, sendAt) => {
+    const { selectedUser } = get();
+    if (!selectedUser || !selectedUser._id) {
+      console.error("No valid selectedUser for scheduleMessage:", selectedUser);
+      toast.error("Please select a user to schedule a message");
+      return;
+    }
 
+    try {
+      const res = await axiosInstance.post(`/messages/schedule/${selectedUser._id}`, {
+        text: messageData.text,
+        image: messageData.image,
+        sendAt: sendAt.toISOString(),
+      });
+      console.log("Scheduled message response:", res.data);
+      // Add the scheduled message to the UI with a "Scheduled" indicator
+      const scheduledMessage = {
+        ...res.data.scheduledMessage,
+        isScheduled: true,
+        createdAt: new Date().toISOString(), // Use current time for UI display
+      };
+      set({ messages: [...get().messages, scheduledMessage] });
+      return res.data;
+    } catch (error) {
+      console.error("Error scheduling message:", error.response?.data || error);
+      throw error;
+    }
+  },
   subscribeToMessages: () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
@@ -87,11 +114,43 @@ export const useChatStore = create((set, get) => ({
     if (!socket) return;
 
     socket.on("newMessage", (newMessage) => {
-      if (newMessage.senderId === selectedUser._id) {
+      console.log("New message received via socket:", newMessage);
+      if (newMessage.senderId === selectedUser._id || newMessage.receiverId === selectedUser._id) {
         set({ messages: [...get().messages, newMessage] });
       }
     });
+  
+    socket.on("scheduledMessage", (message) => {
+      const selectedUser = get().selectedUser;
+      const isRelevant =
+        message.senderId === selectedUser?._id ||
+        message.receiverId === selectedUser?._id;
+    
+      if (isRelevant) {
+        const now = new Date();
+        const scheduledAt = new Date(message.scheduledAt);
+    
+        // Check if it's time to display the message
+        if (!message.isScheduled || scheduledAt <= now) {
+          set((state) => ({
+            messages: [...state.messages, message],
+          }));
+        } else {
+          // Optional: delay until scheduledAt
+          const delay = scheduledAt - now;
+          setTimeout(() => {
+            set((state) => ({
+              messages: [...state.messages, message],
+            }));
+          }, delay);
+        }
+      }
+    });
+    
   },
+  
+
+
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore
@@ -122,4 +181,5 @@ export const useChatStore = create((set, get) => ({
   },
 
   clearSentiment: () => set({ sentiment: null }),
+  
 }));

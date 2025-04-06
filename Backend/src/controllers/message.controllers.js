@@ -3,7 +3,9 @@ import Message from "../models/message.models.js";
 import User from "../models/user.models.js"; 
 import cloudinary from "../lib/cloudinary.js";
 import { HfInference } from "@huggingface/inference";
+import axios from "axios";
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
 
 export const getUsersForSidebar = async (req, res) => {
   try {
@@ -64,6 +66,87 @@ export const sendMessages = async (req, res) => {
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+export const delete_message= async (req,res)=>{
+  try {
+    const{id:messageId}=req.params;
+    const userId=req.user._id;
+    const message=await Message.findById(messageId);
+    if(!message){
+      return res.status(404).json({message:"Message not found"});
+    } 
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "You are not authorized to delete this message" });
+    }
+    await Message.findByIdAndDelete(messageId);
+
+    res.status(200).json({ message: "Message deleted successfully" });
+
+  } catch (error) {
+    console.log("Error in delete_message controller:", error.message);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+    
+  }
+};
+export const scheduleMessage = async (req, res) => {
+  try {
+    const { id: receiverId } = req.params;
+    const { text, image, sendAt } = req.body;
+    const senderId = req.user._id;
+
+    console.log("Received schedule request:", { receiverId, text, image, sendAt, senderId });
+
+    if ((!text && !image) || !sendAt) {
+      console.log("Validation failed: Missing content or sendAt");
+      return res.status(400).json({ message: "Message content (text or image) and send time are required" });
+    }
+
+    const scheduledTime = new Date(sendAt);
+    if (isNaN(scheduledTime.getTime())) {
+      console.log("Invalid sendAt:", sendAt);
+      return res.status(400).json({ message: "Invalid send time format" });
+    }
+
+    const now = new Date();
+    if (scheduledTime < now) {
+      console.log("Scheduled time in past:", scheduledTime, "vs Now:", now);
+      return res.status(400).json({ message: "Scheduled time cannot be in the past" });
+    }
+    const Sent=false;
+    const current_time=Date.now();
+    const time_difference=scheduledTime-current_time;
+    if(time_difference==0){
+      Sent=true;
+    }
+
+    const scheduledMessage = new Message({
+      senderId,
+      receiverId,
+      text: text || "",
+      image: image || "",
+      scheduledAt: scheduledTime,
+      isScheduled: true,
+      isSent:Sent,
+    });
+
+    console.log("Saving scheduled message:", scheduledMessage);
+    await scheduledMessage.save();
+    console.log("Message saved successfully:", scheduledMessage._id);
+
+   
+    if (io) {
+      io.to(receiverId).emit("scheduledMessage", scheduledMessage.toObject());
+      io.to(senderId).emit("scheduledMessage", scheduledMessage.toObject());
+      console.log("Emitted scheduledMessage to:", receiverId, senderId);
+    } else {
+      console.warn("Socket.io not available");
+    }
+
+    res.status(200).json({ message: "Message scheduled successfully", scheduledMessage: scheduledMessage.toObject() });
+  } catch (error) {
+    console.error("Error in scheduleMessage controller:", error.stack);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
