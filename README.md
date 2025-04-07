@@ -102,8 +102,8 @@ Chat-App/
 
 Include some screenshots of your app here.
 
-![Screenshot 1](path/to/screenshot1.png)
-![Screenshot 2](path/to/screenshot2.png)
+![Screenshot 1](chat-app.png)
+
 
 ## Contributing
 
