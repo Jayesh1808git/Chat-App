@@ -1,4 +1,3 @@
-// Sidebar.jsx
 import { useEffect, useState } from "react";
 import { useChatStore } from "../Store/useChatStore";
 import { useAuthStore } from "../Store/useAuthStore";
@@ -14,12 +13,13 @@ const Sidebar = () => {
     setSelectedUser, 
     isUsersLoading 
   } = useChatStore();
-  const { onlineUsers = [] } = useAuthStore();
+  const { authUser, onlineUsers = [] } = useAuthStore(); // Added authUser
   
-  // Initialize addedUsers from localStorage
+  // Initialize addedUsers from localStorage, excluding self
   const [addedUsers, setAddedUsers] = useState(() => {
     const savedUsers = localStorage.getItem("addedChatUsers");
-    return savedUsers ? JSON.parse(savedUsers) : [];
+    const parsedUsers = savedUsers ? JSON.parse(savedUsers) : [];
+    return parsedUsers.filter(user => user._id !== authUser?._id); // Exclude self
   });
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -30,17 +30,18 @@ const Sidebar = () => {
     getUsers();
   }, [getUsers]);
 
-  // Persist addedUsers to localStorage whenever it changes
+  // Persist addedUsers to localStorage whenever it changes, excluding self
   useEffect(() => {
-    localStorage.setItem("addedChatUsers", JSON.stringify(addedUsers));
-  }, [addedUsers]);
+    const filteredUsers = addedUsers.filter(user => user._id !== authUser?._id);
+    localStorage.setItem("addedChatUsers", JSON.stringify(filteredUsers));
+  }, [addedUsers, authUser?._id]);
 
   // Filter users based on online status
   const filteredUsers = showOnlineOnly
     ? addedUsers.filter((user) => onlineUsers.includes(user._id))
     : addedUsers;
 
-  // Improved search functionality
+  // Improved search functionality, excluding self
   const handleSearch = (query) => {
     setSearchQuery(query);
     if (query.trim() === "") {
@@ -48,25 +49,29 @@ const Sidebar = () => {
       return;
     }
 
-    // Split query into words for more precise matching
     const queryWords = query.toLowerCase().trim().split(/\s+/);
 
     const results = allUsers
       .filter((user) => {
         const fullNameLower = user.fullname.toLowerCase();
-        // Check if all query words are present at the start of words in the name
-        return queryWords.every((word) => {
-          const nameWords = fullNameLower.split(/\s+/);
-          return nameWords.some((nameWord) => nameWord.startsWith(word));
-        }) && !addedUsers.some(added => added._id === user._id); // Exclude already added users
+        return user._id !== authUser?._id && // Exclude self
+          queryWords.every((word) => {
+            const nameWords = fullNameLower.split(/\s+/);
+            return nameWords.some((nameWord) => nameWord.startsWith(word));
+          }) && 
+          !addedUsers.some(added => added._id === user._id); // Exclude already added users
       })
       .slice(0, 5); // Limit to 5 results
 
     setSearchResults(results);
   };
 
-  // Add user to sidebar
+  // Add user to sidebar, with self-check
   const handleAddUser = (user) => {
+    if (user._id === authUser?._id) {
+      toast.error("Cannot add yourself as a contact!");
+      return;
+    }
     if (addedUsers.some(u => u._id === user._id)) {
       toast.error("User already added!");
       return;
@@ -109,7 +114,7 @@ const Sidebar = () => {
             <span className="text-sm">Show online only</span>
           </label>
           <span className="text-xs text-base-content/50">
-            ({onlineUsers.length - 1} online)
+            ({onlineUsers.length - 1} online) {/* Adjusted to exclude self */}
           </span>
         </div>
       </div>

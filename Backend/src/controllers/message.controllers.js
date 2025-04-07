@@ -202,27 +202,52 @@ export const getSmartReplies = async (req, res) => {
       return res.status(400).json({ message: "Text is required and must be a string" });
     }
 
-    const prompt = `Respond to the following message with a short, casual reply: "${text}"`;
+    // Enhanced prompt with stricter instruction for Mixtral
+    const prompt = `[INST]Generate exactly one short, casual reply (max 5 words, no newlines or special characters) to: "${text}". Output only the reply.[/INST]`;
     const suggestions = new Set();
 
     const result = await hf.textGeneration({
-      model: 'google/flan-t5-small', // Or a larger flan-t5 variant
+      model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
       inputs: prompt,
       parameters: {
-        max_new_tokens: 15, // Adjust as needed for the desired reply length
-        temperature: 0.7,    // You can adjust randomness
-        top_k: 50,
-        top_p: 0.95,
-        repetition_penalty: 1.2,
-        num_return_sequences: 1,
+        max_new_tokens: 12, // Increased to ensure full reply within 5 words
+        temperature: 0.5,   // Lowered for more focused and consistent replies
+        top_k: 30,          // Reduced to focus on top candidates
+        top_p: 0.85,        // Tightened for better coherence
+        repetition_penalty: 1.5, // Increased to avoid repetition and artifacts
+        num_return_sequences: 1, // Single reply
       },
     });
 
     if (result && result.generated_text) {
-      const reply = result.generated_text.trim();
+      const fullResponse = result.generated_text.trim();
+      console.log("Full Response:", fullResponse); // Debug log to inspect raw output
+
+      // Extract reply after [/INST] and clean it
+      const replyStartIndex = fullResponse.indexOf('[/INST]') + 7;
+      let reply = fullResponse.substring(replyStartIndex).trim();
+
+      // Advanced cleaning: remove newlines, special characters, and enforce word limit
+      reply = reply
+        .replace(/[\n\r]/g, ' ') // Replace newlines with space
+        .replace(/[^a-zA-Z0-9\s.,!?]/g, '') // Remove special characters except basic punctuation
+        .split(' ')
+        .filter(word => word.length > 0) // Remove empty words
+        .slice(0, 5) // Limit to 5 words
+        .join(' ');
+
+      // Fallback if reply is invalid or too short
+      if (!reply || reply.length <= 2 || reply.includes('Generate') || reply.includes('INST')) {
+        reply = "Sorry, try again later."; // Updated fallback
+      }
+
       if (reply && reply.length > 2) {
         suggestions.add(reply);
       }
+    } else {
+      // Handle case where result or generated_text is undefined
+      console.warn("No valid result from text generation");
+      suggestions.add("Sorry, try again later.");
     }
 
     res.status(200).json({ suggestions: Array.from(suggestions) });
