@@ -100,7 +100,7 @@ Chat-App/
 
 ## Screenshots
 
-Include some screenshots of your app here.
+
 
 ![Screenshot 1](chat-app.png)
 
