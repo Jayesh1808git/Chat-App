@@ -11,37 +11,72 @@ const Sidebar = () => {
     users: allUsers, 
     selectedUser, 
     setSelectedUser, 
-    isUsersLoading 
+    isUsersLoading,
+    getMessages, // Fetch message history
+    messages = [], // Access the messages state
+    isMessagesLoading
   } = useChatStore();
-  const { authUser, onlineUsers = [] } = useAuthStore(); // Added authUser
+  const { authUser, onlineUsers = [] } = useAuthStore();
   
-  // Initialize addedUsers from localStorage, excluding self
+  // Initialize addedUsers from localStorage
   const [addedUsers, setAddedUsers] = useState(() => {
     const savedUsers = localStorage.getItem("addedChatUsers");
-    const parsedUsers = savedUsers ? JSON.parse(savedUsers) : [];
-    return parsedUsers.filter(user => user._id !== authUser?._id); // Exclude self
+    return savedUsers ? JSON.parse(savedUsers) : [];
   });
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
+  // Fetch users and messages when component mounts or auth changes
   useEffect(() => {
     getUsers();
-  }, [getUsers]);
+    if (authUser && authUser._id) {
+      getMessages(authUser._id).catch(error => {
+        console.error("Error fetching messages:", error);
+        toast.error("Failed to load message history.");
+      });
+    }
+  }, [getUsers, getMessages, authUser]);
 
-  // Persist addedUsers to localStorage whenever it changes, excluding self
+  // Sync addedUsers with auth state changes (login/logout)
   useEffect(() => {
-    const filteredUsers = addedUsers.filter(user => user._id !== authUser?._id);
-    localStorage.setItem("addedChatUsers", JSON.stringify(filteredUsers));
-  }, [addedUsers, authUser?._id]);
+    if (authUser) {
+      const savedUsers = localStorage.getItem("addedChatUsers");
+      const parsedUsers = savedUsers ? JSON.parse(savedUsers) : [];
+      setAddedUsers(parsedUsers.filter(user => user._id !== authUser._id));
+    } else {
+      setAddedUsers([]);
+      localStorage.removeItem("addedChatUsers");
+    }
+  }, [authUser]);
 
-  // Filter users based on online status
+  // Persist addedUsers to localStorage when it changes
+  useEffect(() => {
+    if (authUser && addedUsers.length > 0) {
+      const filteredUsers = addedUsers.filter(user => user._id !== authUser._id);
+      localStorage.setItem("addedChatUsers", JSON.stringify(filteredUsers));
+    }
+  }, [addedUsers, authUser]);
+
+  // Get users with messages from the database
+  const usersWithMessages = allUsers.filter(user => 
+    user._id !== authUser?._id && 
+    messages.some(msg => 
+      msg.sender === user._id || msg.receiver === user._id
+    )
+  ).filter(user => user !== undefined); // Ensure no undefined users
+
+  // Combine manually added users with users from message history
+  const allDisplayedUsers = [
+    ...new Map([...addedUsers, ...usersWithMessages].map(user => [user._id, user])).values()
+  ];
+
+  // Filter based on online status
   const filteredUsers = showOnlineOnly
-    ? addedUsers.filter((user) => onlineUsers.includes(user._id))
-    : addedUsers;
+    ? allDisplayedUsers.filter((user) => onlineUsers.includes(user._id))
+    : allDisplayedUsers;
 
-  // Improved search functionality, excluding self
   const handleSearch = (query) => {
     setSearchQuery(query);
     if (query.trim() === "") {
@@ -54,26 +89,29 @@ const Sidebar = () => {
     const results = allUsers
       .filter((user) => {
         const fullNameLower = user.fullname.toLowerCase();
-        return user._id !== authUser?._id && // Exclude self
+        return user._id !== authUser?._id &&
           queryWords.every((word) => {
             const nameWords = fullNameLower.split(/\s+/);
             return nameWords.some((nameWord) => nameWord.startsWith(word));
           }) && 
-          !addedUsers.some(added => added._id === user._id); // Exclude already added users
+          !allDisplayedUsers.some(added => added._id === user._id);
       })
-      .slice(0, 5); // Limit to 5 results
+      .slice(0, 5);
 
     setSearchResults(results);
   };
 
-  // Add user to sidebar, with self-check
   const handleAddUser = (user) => {
-    if (user._id === authUser?._id) {
+    if (!authUser) {
+      toast.error("Please log in to add contacts!");
+      return;
+    }
+    if (user._id === authUser._id) {
       toast.error("Cannot add yourself as a contact!");
       return;
     }
-    if (addedUsers.some(u => u._id === user._id)) {
-      toast.error("User already added!");
+    if (allDisplayedUsers.some(u => u._id === user._id)) {
+      toast.error("User already displayed!");
       return;
     }
     setAddedUsers(prev => [...prev, user]);
@@ -83,11 +121,10 @@ const Sidebar = () => {
     toast.success(`${user.fullname} added to contacts!`);
   };
 
-  if (isUsersLoading) return <SidebarSkeleton />;
+  if (isUsersLoading || isMessagesLoading) return <SidebarSkeleton />;
 
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200 bg-white dark:bg-gray-800">
-      {/* Header */}
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -99,31 +136,37 @@ const Sidebar = () => {
           <button
             onClick={() => setIsSearchOpen(true)}
             className="btn btn-ghost btn-circle hover:bg-base-200 transition-all hover:shadow-md"
+            disabled={!authUser}
           >
             <Plus className="size-5 text-primary" />
           </button>
         </div>
-        <div className="mt-3 hidden lg:flex items-center gap-2">
-          <label className="cursor-pointer flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showOnlineOnly}
-              onChange={(e) => setShowOnlineOnly(e.target.checked)}
-              className="checkbox checkbox-sm checkbox-primary"
-            />
-            <span className="text-sm">Show online only</span>
-          </label>
-          <span className="text-xs text-base-content/50">
-            ({onlineUsers.length - 1} online) {/* Adjusted to exclude self */}
-          </span>
-        </div>
+        {authUser && (
+          <div className="mt-3 hidden lg:flex items-center gap-2">
+            <label className="cursor-pointer flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showOnlineOnly}
+                onChange={(e) => setShowOnlineOnly(e.target.checked)}
+                className="checkbox checkbox-sm checkbox-primary"
+              />
+              <span className="text-sm">Show online only</span>
+            </label>
+            <span className="text-xs text-base-content/50">
+              ({onlineUsers.length - (authUser ? 1 : 0)} online)
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* User List */}
       <div className="overflow-y-auto w-full py-3">
-        {filteredUsers.length === 0 ? (
+        {!authUser ? (
           <div className="text-center text-base-content/50 py-4">
-            No contacts added yet. Click the + button to add someone!
+            Please log in to view contacts
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="text-center text-base-content/50 py-4">
+            No contacts or message history yet. Click the + button to add someone!
           </div>
         ) : (
           filteredUsers.map((user) => (
@@ -160,8 +203,7 @@ const Sidebar = () => {
         )}
       </div>
 
-      {/* Search Modal */}
-      {isSearchOpen && (
+      {isSearchOpen && authUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700">
             <div className="flex justify-between items-center mb-4">
@@ -189,7 +231,6 @@ const Sidebar = () => {
               />
             </div>
 
-            {/* Search Results */}
             <div className="max-h-64 overflow-y-auto space-y-2">
               {searchResults.length > 0 ? (
                 searchResults.map((user) => (

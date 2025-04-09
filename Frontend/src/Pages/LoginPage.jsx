@@ -35,18 +35,6 @@ const LoginPage = () => {
     }, 500);
   };
 
-  // Password strength indicator (optional for login, but keeps UI consistent)
-  const getPasswordStrength = () => {
-    const password = formData.password;
-    if (!password) return { strength: 0, text: '' };
-    if (password.length < 6) return { strength: 1, text: 'Weak' };
-    if (password.length < 8) return { strength: 2, text: 'Fair' };
-    if (password.length < 10) return { strength: 3, text: 'Good' };
-    return { strength: 4, text: 'Strong' };
-  };
-
-  const passwordStrength = getPasswordStrength();
-
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-gradient-to-br from-base-100 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Left Side */}
@@ -147,21 +135,8 @@ const LoginPage = () => {
               <label className="label">
                 <span className="label-text font-medium text-base">
                   Password
-                  {passwordStrength.text && (
-                    <span
-                      className={`label-text-alt font-medium ${
-                        passwordStrength.strength === 1
-                          ? 'text-red-500'
-                          : passwordStrength.strength === 2
-                          ? 'text-orange-500'
-                          : passwordStrength.strength === 3
-                          ? 'text-yellow-500'
-                          : 'text-green-500'
-                      }`}
-                    >
-                      {passwordStrength.text}
-                    </span>
-                  )}
+                    
+
                 </span>
               </label>
               <div className="relative">
@@ -194,23 +169,6 @@ const LoginPage = () => {
                   )}
                 </button>
               </div>
-              {formData.password && (
-                <div className="mt-2">
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full ${
-                        passwordStrength.strength === 1
-                          ? 'bg-red-500 w-1/4'
-                          : passwordStrength.strength === 2
-                          ? 'bg-orange-500 w-2/4'
-                          : passwordStrength.strength === 3
-                          ? 'bg-yellow-500 w-3/4'
-                          : 'bg-green-500 w-full'
-                      }`}
-                    ></div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <button

@@ -225,14 +225,6 @@ const SignUpPage = () => {
                 </span>
               </label>
             </div>
-
-            <div className="form-control">
-              <label className="label cursor-pointer justify-start gap-2">
-                <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" />
-                <span className="label-text text-base-content/70">I agree to the <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link></span>
-              </label>
-            </div>
-
             <button 
               type="submit" 
               className="btn btn-primary w-full py-6 rounded-xl text-lg font-medium transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 transform hover:-translate-y-1 bg-gradient-to-r from-primary to-secondary border-0" 
