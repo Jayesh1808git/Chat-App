@@ -18,11 +18,14 @@ const Sidebar = () => {
   } = useChatStore();
   const { authUser, onlineUsers = [] } = useAuthStore();
   
-  // Initialize addedUsers from localStorage
+  // Initialize addedUsers from localStorage with user-specific key
   const [addedUsers, setAddedUsers] = useState(() => {
-    const savedUsers = localStorage.getItem("addedChatUsers");
+    if (!authUser || !authUser._id) return [];
+    const userContactsKey = `addedChatUsers_${authUser._id}`;
+    const savedUsers = localStorage.getItem(userContactsKey);
     return savedUsers ? JSON.parse(savedUsers) : [];
   });
+
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,21 +44,22 @@ const Sidebar = () => {
 
   // Sync addedUsers with auth state changes (login/logout)
   useEffect(() => {
-    if (authUser) {
-      const savedUsers = localStorage.getItem("addedChatUsers");
+    if (authUser && authUser._id) {
+      const userContactsKey = `addedChatUsers_${authUser._id}`;
+      const savedUsers = localStorage.getItem(userContactsKey);
       const parsedUsers = savedUsers ? JSON.parse(savedUsers) : [];
       setAddedUsers(parsedUsers.filter(user => user._id !== authUser._id));
     } else {
-      setAddedUsers([]);
-      localStorage.removeItem("addedChatUsers");
+      setAddedUsers([]); // Clear on logout, but don't remove from localStorage
     }
   }, [authUser]);
 
   // Persist addedUsers to localStorage when it changes
   useEffect(() => {
-    if (authUser && addedUsers.length > 0) {
+    if (authUser && authUser._id) {
+      const userContactsKey = `addedChatUsers_${authUser._id}`;
       const filteredUsers = addedUsers.filter(user => user._id !== authUser._id);
-      localStorage.setItem("addedChatUsers", JSON.stringify(filteredUsers));
+      localStorage.setItem(userContactsKey, JSON.stringify(filteredUsers));
     }
   }, [addedUsers, authUser]);
 
