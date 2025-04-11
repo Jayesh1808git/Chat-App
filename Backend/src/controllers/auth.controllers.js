@@ -23,7 +23,7 @@ export const signup= async (req,res) =>{
             email,
             fullname,
             password:hashedpassword
-        });
+        }); 
         if(new_user){
             //Generate JWT tokens
             generate_token(new_user._id,res);

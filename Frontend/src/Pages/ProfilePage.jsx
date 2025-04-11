@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../Store/useAuthStore';
 import { Camera, Mail, User, Calendar, Shield } from "lucide-react";
 import { motion } from 'framer-motion'; // Add this dependency for animations
+import Compressor from 'compressorjs'
 
 const ProfilePage = () => {
   const { authUser, isUpdatingProfile, updateProfile } = useAuthStore();
@@ -10,13 +11,32 @@ const ProfilePage = () => {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64image = reader.result;
-      setSelectedImg(base64image);
-      await updateProfile({ profilepic: base64image });
-    };
+
+    // Validate file size (e.g., max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    // Compress the image
+    new Compressor(file, {
+      quality: 0.6, // Adjust quality (0 to 1)
+      maxWidth: 800, // Resize to max width
+      maxHeight: 800, // Resize to max height
+      success(compressedFile) {
+        const reader = new FileReader();
+        reader.readAsDataURL(compressedFile);
+        reader.onload = async () => {
+          const base64image = reader.result;
+          setSelectedImg(base64image);
+          await updateProfile({ profilepic: base64image });
+        };
+      },
+      error(err) {
+        console.error("Compression error:", err);
+        toast.error("Failed to compress image");
+      },
+    });
   };
 
   // Animation variants
