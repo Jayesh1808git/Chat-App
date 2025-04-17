@@ -17,6 +17,12 @@ const  messageschema= new mongoose.Schema(
         image:{
             type:String,
         },
+        document:{
+            type:String,
+        },
+        filename:{
+            type:String,
+        },
         scheduledAt: {
             type: Date, 
             default: null,

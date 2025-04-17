@@ -1,8 +1,7 @@
-// useChatStore.jsx
-import { create } from "zustand";
-import toast from "react-hot-toast";
-import { axiosInstance } from "../lib/axios";
-import { useAuthStore } from "./useAuthStore";
+import { create } from 'zustand';
+import toast from 'react-hot-toast';
+import { axiosInstance } from '../lib/axios';
+import { useAuthStore } from './useAuthStore';
 
 export const useChatStore = create((set, get) => ({
   messages: [],
@@ -11,34 +10,33 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isMessagesLoading: false,
   sentiment: null,
-  smartReply:null,
+  smartReply: null,
 
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
-      const res = await axiosInstance.get("/messages/users");
+      const res = await axiosInstance.get('/messages/users');
       set({ users: res.data });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch users");
+      toast.error(error.response?.data?.message || 'Failed to fetch users');
     } finally {
       set({ isUsersLoading: false });
     }
   },
 
   getMessages: async (userId) => {
-    if (!userId || typeof userId !== "string" || !userId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.error("Invalid userId in getMessages:", userId, new Error().stack); // Stack trace for debugging
-      toast.error("Invalid user selected for messages");
+    if (!userId || typeof userId !== 'string' || !userId.match(/^[0-9a-fA-F]{24}$/)) {
+      console.error('Invalid userId in getMessages:', userId, new Error().stack);
+      toast.error('Invalid user selected for messages');
       return;
     }
-
 
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
       set({ messages: res.data });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch messages");
+      toast.error(error.response?.data?.message || 'Failed to fetch messages');
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -47,8 +45,8 @@ export const useChatStore = create((set, get) => ({
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     if (!selectedUser || !selectedUser._id) {
-      console.error("No valid selectedUser for sendMessage:", selectedUser);
-      toast.error("Please select a user to send a message");
+      console.error('No valid selectedUser for sendMessage:', selectedUser);
+      toast.error('Please select a user to send a message');
       return;
     }
 
@@ -60,30 +58,58 @@ export const useChatStore = create((set, get) => ({
       };
       set({ messages: [...messages, newMessage] });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to send message");
+      toast.error(error.response?.data?.message || 'Failed to send message');
     }
   },
-  deleteMessage:async(messageId)=>{
-    if (!messageId || typeof messageId !== "string" || !messageId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.error("Invalid messageId in deleteMessage:", messageId);
-      toast.error("Invalid message ID");
+
+  sendDocument: async (formData) => {
+    const { selectedUser } = get();
+    const authUser = useAuthStore.getState().authUser;
+  
+    if (!authUser?._id || !selectedUser?._id || !formData.has('file')) {
+      throw new Error('Invalid input for sendDocument');
+    }
+  
+    formData.append('senderId', authUser._id);
+    formData.append('receiverId', selectedUser._id);
+  
+    try {
+      const res = await axiosInstance.post('/messages/send-document', formData);
+      console.log('Backend response:', res.data);
+      const newMessage = {
+        ...res.data,
+        createdAt: res.data.createdAt || new Date().toISOString(),
+      };
+      set((state) => ({ messages: [...state.messages, newMessage] }));
+      return res.data;
+    } catch (error) {
+      console.error('Error sending document:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+
+  deleteMessage: async (messageId) => {
+    if (!messageId || typeof messageId !== 'string' || !messageId.match(/^[0-9a-fA-F]{24}$/)) {
+      console.error('Invalid messageId in deleteMessage:', messageId);
+      toast.error('Invalid message ID');
       return;
     }
-      try {
-        await axiosInstance.delete(`/messages/delete/${messageId}`);
-        const { messages } = get();
-        set({ messages: messages.filter((msg) => msg._id !== messageId) });
-        toast.success("Message deleted successfully");
-      } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to delete message");
-      }
-    
+    try {
+      await axiosInstance.delete(`/messages/delete/${messageId}`);
+      const { messages } = get();
+      set({ messages: messages.filter((msg) => msg._id !== messageId) });
+      toast.success('Message deleted successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete message');
+    }
   },
+
   scheduleMessage: async (messageData, sendAt) => {
     const { selectedUser } = get();
     if (!selectedUser || !selectedUser._id) {
-      console.error("No valid selectedUser for scheduleMessage:", selectedUser);
-      toast.error("Please select a user to schedule a message");
+      console.error('No valid selectedUser for scheduleMessage:', selectedUser);
+      toast.error('Please select a user to schedule a message');
       return;
     }
 
@@ -93,20 +119,20 @@ export const useChatStore = create((set, get) => ({
         image: messageData.image,
         sendAt: sendAt.toISOString(),
       });
-      console.log("Scheduled message response:", res.data);
-      // Add the scheduled message to the UI with a "Scheduled" indicator
+      console.log('Scheduled message response:', res.data);
       const scheduledMessage = {
         ...res.data.scheduledMessage,
         isScheduled: true,
-        createdAt: new Date().toISOString(), // Use current time for UI display
+        createdAt: new Date().toISOString(),
       };
       set({ messages: [...get().messages, scheduledMessage] });
       return res.data;
     } catch (error) {
-      console.error("Error scheduling message:", error.response?.data || error);
+      console.error('Error scheduling message:', error.response?.data || error);
       throw error;
     }
   },
+
   subscribeToMessages: () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
@@ -114,30 +140,28 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
-    socket.on("newMessage", (newMessage) => {
-      console.log("New message received via socket:", newMessage);
+    socket.on('newMessage', (newMessage) => {
+      console.log('New message received via socket:', newMessage);
       if (newMessage.senderId === selectedUser._id || newMessage.receiverId === selectedUser._id) {
         set({ messages: [...get().messages, newMessage] });
       }
     });
-  
-    socket.on("scheduledMessage", (message) => {
+
+    socket.on('scheduledMessage', (message) => {
       const selectedUser = get().selectedUser;
       const isRelevant =
         message.senderId === selectedUser?._id ||
         message.receiverId === selectedUser?._id;
-    
+
       if (isRelevant) {
         const now = new Date();
         const scheduledAt = new Date(message.scheduledAt);
-    
-        // Check if it's time to display the message
+
         if (!message.isScheduled || scheduledAt <= now) {
           set((state) => ({
             messages: [...state.messages, message],
           }));
         } else {
-          // Optional: delay until scheduledAt
           const delay = scheduledAt - now;
           setTimeout(() => {
             set((state) => ({
@@ -147,49 +171,44 @@ export const useChatStore = create((set, get) => ({
         }
       }
     });
-    
   },
-  
-
-
 
   unsubscribeFromMessages: () => {
-    const socket = useAuthStore
-
-.getState().socket;
+    const socket = useAuthStore.getState().socket;
     if (socket) {
-      socket.off("newMessage");
+      socket.off('newMessage');
+      socket.off('scheduledMessage');
     }
   },
-  getSmartReply: async (text) =>{
-    if (!text || typeof text !== "string") {
-      toast.error("Please provide valid text for smart reply");
+
+  getSmartReply: async (text) => {
+    if (!text || typeof text !== 'string') {
+      toast.error('Please provide valid text for smart reply');
       return;
     }
 
     try {
-      const res = await axiosInstance.post("/messages/smart_reply", { text });
-      const Reply = res.data.suggestions[0];
-      set({ smartReply: Reply});
-      console.log("Smart reply response:", Reply);
+      const res = await axiosInstance.post('/messages/smart_reply', { text });
+      const reply = res.data.suggestions[0];
+      set({ smartReply: reply });
+      console.log('Smart reply response:', reply);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to get smart reply");
-      set({ reply: null });
+      toast.error(error.response?.data?.message || 'Failed to get smart reply');
+      set({ smartReply: null });
     }
-
   },
 
   analyzeSentiment: async (text) => {
-    if (!text || typeof text !== "string") {
-      toast.error("Please provide valid text to analyze");
+    if (!text || typeof text !== 'string') {
+      toast.error('Please provide valid text to analyze');
       return;
     }
 
     try {
-      const res = await axiosInstance.post("/messages/analyze_sentiment", { text });
+      const res = await axiosInstance.post('/messages/analyze_sentiment', { text });
       set({ sentiment: { label: res.data.label, score: res.data.score } });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to analyze sentiment");
+      toast.error(error.response?.data?.message || 'Failed to analyze sentiment');
       set({ sentiment: null });
     }
   },
@@ -199,5 +218,4 @@ export const useChatStore = create((set, get) => ({
   },
 
   clearSentiment: () => set({ sentiment: null }),
-  
 }));

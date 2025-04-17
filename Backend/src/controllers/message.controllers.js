@@ -3,6 +3,7 @@ import Message from "../models/message.models.js";
 import User from "../models/user.models.js"; 
 import cloudinary from "../lib/cloudinary.js";
 import { HfInference } from "@huggingface/inference";
+import fs from "fs";
 import axios from "axios";
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
 
@@ -66,6 +67,68 @@ export const sendMessages = async (req, res) => {
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+export const sendDocument = async (req, res) => {
+  try {
+    console.log('Received request body:', req.body);
+    console.log('Received files:', req.files);
+    const { senderId, receiverId } = req.body;
+    const file = req.files?.file;
+
+    if (!file || !senderId || !receiverId) {
+      console.log('Missing fields:', { file: !!file, senderId, receiverId });
+      return res.status(400).json({ message: 'File, senderId, and receiverId are required' });
+    }
+
+    if (!file.mimetype.startsWith('application/') && !file.mimetype.startsWith('text/')) {
+      return res.status(400).json({ message: 'Invalid file type. Only documents allowed.' });
+    }
+
+    const originalFilename = file.name.replace(/\s+/g, '_').replace(/[\[\]]/g, '');
+    const uniquePublicId = `${Date.now()}_${originalFilename}`; // Timestamp for Cloudinary
+
+    const result = await cloudinary.uploader.upload(file.tempFilePath, {
+      folder: 'chat_documents',
+      resource_type: 'raw',
+      public_id: uniquePublicId,
+      overwrite: true,
+      access_control: [{ access_type: "anonymous" }],
+      // Suggest original filename to Cloudinary (may not always work)
+      original_filename: originalFilename,
+    });
+    console.log('Cloudinary upload result with details:', {
+      secure_url: result.secure_url,
+      public_id: result.public_id,
+      original_filename: originalFilename,
+      resource_type: result.resource_type,
+      upload_response: result,
+    });
+
+    if (!result.secure_url) {
+      throw new Error('Cloudinary upload failed: No secure URL returned');
+    }
+
+    const newMessage = new Message({
+      senderId,
+      receiverId,
+      document: result.secure_url,
+      filename: originalFilename, // Must be the original name
+      createdAt: new Date(),
+    });
+    await newMessage.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(senderId).to(receiverId).emit('newMessage', newMessage);
+    }
+
+    res.status(200).json(newMessage);
+  } catch (error) {
+    console.log('Error in sendDocument controller:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 export const delete_message= async (req,res)=>{

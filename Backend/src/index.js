@@ -9,6 +9,7 @@ import passport from './lib/passport.js';
 import session from 'express-session';
 import {io,app,server} from "./lib/socket.js";
 import "./lib/scheduler.js";
+import fileUpload from 'express-fileupload';
 dotenv.config();
 
 const port = process.env.PORT;
@@ -26,14 +27,23 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { secure: process.env.NODE_ENV === 'production' }
-})); 
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true })); 
+app.use(fileUpload({
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    abortOnLimit: true,
+  })); 
 
 // Initialize passport
 app.use(passport.initialize());
 app.use(passport.session());
 
 app.use("/api/auth", authRoutes);
-app.use("/api/messages", messageRoutes);     //
+app.use("/api/messages", messageRoutes);
+app.use(fileUpload({ useTempFiles: true, tempFileDir: '/tmp/' }));     
 
 server.listen(port, () => {
     console.log("Listening on port:" + port);

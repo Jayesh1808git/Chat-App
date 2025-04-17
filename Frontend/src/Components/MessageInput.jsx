@@ -1,18 +1,22 @@
 import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../Store/useChatStore";
-import { Image, Send, X, Brain, Clock, Plus } from "lucide-react";
+import { useAuthStore } from "../Store/useAuthStore";
+import { Image, Send, X, Brain, Clock, Plus, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 
 const MessageInput = ({ lastMessage }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [documentPreview, setDocumentPreview] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
   const [sendAt, setSendAt] = useState(null);
   const [showOptions, setShowOptions] = useState(false);
   const fileInputRef = useRef(null);
+  const documentInputRef = useRef(null);
   const inputRef = useRef(null);
   const optionsRef = useRef(null);
+  const { authUser } = useAuthStore();
   const {
     sendMessage,
     analyzeSentiment,
@@ -22,6 +26,8 @@ const MessageInput = ({ lastMessage }) => {
     clearSentiment,
     smartReply,
     getSmartReply,
+    sendDocument,
+    selectedUser,
   } = useChatStore();
 
   useEffect(() => {
@@ -44,8 +50,15 @@ const MessageInput = ({ lastMessage }) => {
     };
   }, []);
 
+  useEffect(() => {
+    // Log authUser and selectedUser on mount and update
+    console.log("MessageInput authUser:", authUser);
+    console.log("MessageInput selectedUser:", selectedUser);
+  }, [authUser, selectedUser]);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
@@ -55,9 +68,51 @@ const MessageInput = ({ lastMessage }) => {
     reader.readAsDataURL(file);
   };
 
+  const handleDocumentChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      console.error("No file selected in handleDocumentChange");
+      toast.error("No file selected");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
+    // Validate file type (PDF, DOC, DOCX, TXT)
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only PDF, DOCX, and TXT files are allowed");
+      return;
+    }
+
+    // Log file details
+    console.log("Selected document:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+
+    // Store file and filename for preview
+    setDocumentPreview({ file, name: file.name });
+  };
+
   const removeImage = () => {
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeDocument = () => {
+    setDocumentPreview(null);
+    if (documentInputRef.current) documentInputRef.current.value = "";
   };
 
   const handleAnalyzeSentiment = async () => {
@@ -79,38 +134,82 @@ const MessageInput = ({ lastMessage }) => {
 
   const handleSendOrScheduleMessage = async (e) => {
     e.preventDefault();
-    if (!text.trim() && !imagePreview) {
+    if (!text.trim() && !imagePreview && !documentPreview) {
       console.log("No content to send or schedule");
       return;
     }
 
-    const messageData = { text: text.trim(), image: imagePreview };
-    console.log("Attempting to", isScheduling ? "schedule" : "send", "message. Data:", messageData, "SendAt:", sendAt);
-
     try {
-      if (isScheduling) {
-        if (!sendAt) {
-          toast.error("Please select a date and time to schedule");
-          console.log("No sendAt provided");
+      if (documentPreview) {
+        // Validate inputs
+        if (!authUser || !authUser._id) {
+          console.error("No valid authUser:", authUser);
+          toast.error("Please log in to send a document");
           return;
         }
-        const now = new Date();
-        if (sendAt < now) {
-          toast.error("Scheduled time cannot be in the past");
-          console.log("Selected time is in the past:", sendAt, "vs Now:", now);
+        if (!selectedUser || !selectedUser._id) {
+          console.error("No valid selectedUser:", selectedUser);
+          toast.error("Please select a user to send a document");
           return;
         }
-        console.log("Scheduling request payload:", { ...messageData, sendAt: sendAt.toISOString() });
-        const response = await scheduleMessage(messageData, sendAt);
-        console.log("Schedule response:", response);
-        toast.success("Message scheduled successfully");
+        if (!documentPreview.file || !(documentPreview.file instanceof File)) {
+          console.error("No valid document file:", documentPreview);
+          toast.error("Invalid document selected");
+          return;
+        }
+
+        // Log document details
+        console.log("Preparing to send document:", {
+          name: documentPreview.file.name,
+          size: documentPreview.file.size,
+          type: documentPreview.file.type,
+          senderId: authUser._id,
+          receiverId: selectedUser._id,
+        });
+
+        // Create FormData with only the file
+        const formData = new FormData();
+        formData.append("file", documentPreview.file);
+
+        // Log FormData before sending
+        for (let [key, value] of formData.entries()) {
+          console.log(`MessageInput FormData ${key}:`, value);
+        }
+
+        await sendDocument(formData);
+        toast.success("Document sent successfully");
       } else {
-        console.log("Sending message immediately:", messageData);
-        await sendMessage(messageData);
-        toast.success("Message sent successfully");
+        // Send text or image
+        const messageData = { text: text.trim(), image: imagePreview };
+        console.log("Attempting to", isScheduling ? "schedule" : "send", "message. Data:", messageData, "SendAt:", sendAt);
+
+        if (isScheduling) {
+          if (!sendAt) {
+            toast.error("Please select a date and time to schedule");
+            console.log("No sendAt provided");
+            return;
+          }
+          const now = new Date();
+          if (sendAt < now) {
+            toast.error("Scheduled time cannot be in the past");
+            console.log("Selected time is in the past:", sendAt, "vs Now:", now);
+            return;
+          }
+          console.log("Scheduling request payload:", { ...messageData, sendAt: sendAt.toISOString() });
+          const response = await scheduleMessage(messageData, sendAt);
+          console.log("Schedule response:", response);
+          toast.success("Message scheduled successfully");
+        } else {
+          console.log("Sending message immediately:", messageData);
+          await sendMessage(messageData);
+          toast.success("Message sent successfully");
+        }
       }
+
+      // Reset inputs
       setText("");
       setImagePreview(null);
+      setDocumentPreview(null);
       setSendAt(null);
       setIsScheduling(false);
       clearSentiment();
@@ -179,6 +278,23 @@ const MessageInput = ({ lastMessage }) => {
             />
             <button
               onClick={removeImage}
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 transition-all"
+              type="button"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      {documentPreview && (
+        <div className="mb-4 flex items-center gap-3">
+          <div className="relative flex items-center gap-2">
+            <FileText className="w-6 h-6 text-blue-500" />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              {documentPreview.name} ({(documentPreview.file.size / 1024 / 1024).toFixed(2)} MB)
+            </span>
+            <button
+              onClick={removeDocument}
               className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500/90 flex items-center justify-center text-white hover:bg-red-600 transition-all"
               type="button"
             >
@@ -258,14 +374,31 @@ const MessageInput = ({ lastMessage }) => {
             type="button"
             className="btn btn-circle bg-gradient-to-r from-primary to-secondary text-white hover:shadow-lg hover:shadow-primary/20 transition-all transform hover:-translate-y-1"
             onClick={() => fileInputRef.current?.click()}
+            title="Upload Image"
           >
             <Image size={22} />
+          </button>
+
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.txt"
+            className="hidden"
+            ref={documentInputRef}
+            onChange={handleDocumentChange}
+          />
+          <button
+            type="button"
+            className="btn btn-circle bg-gradient-to-r from-primary to-secondary text-white hover:shadow-lg hover:shadow-primary/20 transition-all transform hover:-translate-y-1"
+            onClick={() => documentInputRef.current?.click()}
+            title="Upload Document"
+          >
+            <FileText size={22} />
           </button>
 
           <button
             type="submit"
             className="btn btn-circle bg-gradient-to-r from-primary to-secondary text-white hover:shadow-lg hover:shadow-primary/20 transition-all transform hover:-translate-y-1"
-            disabled={!text.trim() && !imagePreview}
+            disabled={!text.trim() && !imagePreview && !documentPreview}
           >
             <Send size={22} />
           </button>
