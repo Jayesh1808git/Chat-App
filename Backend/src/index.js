@@ -8,7 +8,6 @@ import cors from 'cors';
 import passport from './lib/passport.js';
 import session from 'express-session';
 import { io, app, server } from './lib/socket.js';
-import './lib/scheduler.js';
 import fileUpload from 'express-fileupload';
 
 dotenv.config();
