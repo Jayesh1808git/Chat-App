@@ -3,7 +3,6 @@ import { useChatStore } from "../Store/useChatStore";
 import { useAuthStore } from "../Store/useAuthStore";
 import SidebarSkeleton from "./skeleton/SidebarSkeleton";
 import { Users, Plus, Search, X } from "lucide-react";
-import toast from "react-hot-toast";
 
 const Sidebar = () => {
   const { 
@@ -12,13 +11,12 @@ const Sidebar = () => {
     selectedUser, 
     setSelectedUser, 
     isUsersLoading,
-    getMessages, // Fetch message history
-    messages = [], // Access the messages state
+    getMessages, 
+    messages = [], 
     isMessagesLoading
   } = useChatStore();
   const { authUser, onlineUsers = [] } = useAuthStore();
   
-  // Initialize addedUsers from localStorage with user-specific key
   const [addedUsers, setAddedUsers] = useState(() => {
     if (!authUser || !authUser._id) return [];
     const userContactsKey = `addedChatUsers_${authUser._id}`;
@@ -31,18 +29,13 @@ const Sidebar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
-  // Fetch users and messages when component mounts or auth changes
   useEffect(() => {
     getUsers();
     if (authUser && authUser._id) {
-      getMessages(authUser._id).catch(error => {
-        console.error("Error fetching messages:", error);
-        toast.error("Failed to load message history.");
-      });
+      getMessages(authUser._id);
     }
   }, [getUsers, getMessages, authUser]);
 
-  // Sync addedUsers with auth state changes (login/logout)
   useEffect(() => {
     if (authUser && authUser._id) {
       const userContactsKey = `addedChatUsers_${authUser._id}`;
@@ -50,11 +43,10 @@ const Sidebar = () => {
       const parsedUsers = savedUsers ? JSON.parse(savedUsers) : [];
       setAddedUsers(parsedUsers.filter(user => user._id !== authUser._id));
     } else {
-      setAddedUsers([]); // Clear on logout, but don't remove from localStorage
+      setAddedUsers([]);
     }
   }, [authUser]);
 
-  // Persist addedUsers to localStorage when it changes
   useEffect(() => {
     if (authUser && authUser._id) {
       const userContactsKey = `addedChatUsers_${authUser._id}`;
@@ -63,20 +55,17 @@ const Sidebar = () => {
     }
   }, [addedUsers, authUser]);
 
-  // Get users with messages from the database
   const usersWithMessages = allUsers.filter(user => 
     user._id !== authUser?._id && 
     messages.some(msg => 
       msg.sender === user._id || msg.receiver === user._id
     )
-  ).filter(user => user !== undefined); // Ensure no undefined users
+  ).filter(user => user !== undefined);
 
-  // Combine manually added users with users from message history
   const allDisplayedUsers = [
     ...new Map([...addedUsers, ...usersWithMessages].map(user => [user._id, user])).values()
   ];
 
-  // Filter based on online status
   const filteredUsers = showOnlineOnly
     ? allDisplayedUsers.filter((user) => onlineUsers.includes(user._id))
     : allDisplayedUsers;
@@ -106,101 +95,63 @@ const Sidebar = () => {
   };
 
   const handleAddUser = (user) => {
-    if (!authUser) {
-      toast.error("Please log in to add contacts!");
-      return;
-    }
-    if (user._id === authUser._id) {
-      toast.error("Cannot add yourself as a contact!");
-      return;
-    }
-    if (allDisplayedUsers.some(u => u._id === user._id)) {
-      toast.error("User already displayed!");
-      return;
-    }
+    if (!authUser) return;
+    if (user._id === authUser._id) return;
+    if (allDisplayedUsers.some(u => u._id === user._id)) return;
     setAddedUsers(prev => [...prev, user]);
     setSearchQuery("");
     setSearchResults([]);
     setIsSearchOpen(false);
-    toast.success(`${user.fullname} added to contacts!`);
   };
 
   if (isUsersLoading || isMessagesLoading) return <SidebarSkeleton />;
 
   return (
-    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200 bg-white dark:bg-gray-800">
-      <div className="border-b border-base-300 w-full p-5">
+    <aside className="h-full w-20 lg:w-64 border-r border-gray-200 bg-white flex flex-col pt-4 ">
+      <div className="border-b border-gray-200 p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="size-6 text-primary" />
-            <span className="font-medium hidden lg:block text-lg bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Contacts
-            </span>
+            <Users className="size-6 text-blue-600" />
+            <span className="font-medium hidden lg:block text-lg text-gray-800">Contacts</span>
           </div>
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="btn btn-ghost btn-circle hover:bg-base-200 transition-all hover:shadow-md"
+            className="btn btn-ghost btn-circle hover:bg-gray-100"
             disabled={!authUser}
           >
-            <Plus className="size-5 text-primary" />
+            <Plus className="size-5 text-blue-600" />
           </button>
         </div>
-        {authUser && (
-          <div className="mt-3 hidden lg:flex items-center gap-2">
-            <label className="cursor-pointer flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={showOnlineOnly}
-                onChange={(e) => setShowOnlineOnly(e.target.checked)}
-                className="checkbox checkbox-sm checkbox-primary"
-              />
-              <span className="text-sm">Show online only</span>
-            </label>
-            <span className="text-xs text-base-content/50">
-              ({onlineUsers.length - (authUser ? 1 : 0)} online)
-            </span>
-          </div>
-        )}
       </div>
 
-      <div className="overflow-y-auto w-full py-3">
+      <div className="overflow-y-auto py-2">
         {!authUser ? (
-          <div className="text-center text-base-content/50 py-4">
-            Please log in to view contacts
-          </div>
+          <div className="text-center text-gray-500 py-2">Please log in</div>
         ) : filteredUsers.length === 0 ? (
-          <div className="text-center text-base-content/50 py-4">
-            No contacts or message history yet. Click the + button to add someone!
-          </div>
+          <div className="text-center text-gray-500 py-2">No contacts yet. Add someone!</div>
         ) : (
           filteredUsers.map((user) => (
             <button
               key={user._id}
               onClick={() => setSelectedUser(user)}
               className={`
-                w-full p-3 flex items-center gap-3
-                hover:bg-base-200 transition-colors duration-200
-                ${selectedUser?._id === user._id ? "bg-base-200 ring-1 ring-primary/20" : ""}
+                w-full p-2 flex items-center gap-2 hover:bg-gray-100
+                ${selectedUser?._id === user._id ? "bg-gray-100" : ""}
               `}
             >
-              <div className="relative mx-auto lg:mx-0">
+              <div className="relative">
                 <img
                   src={user.profilepic || "/avatar.png"}
                   alt={user.fullname}
-                  className="size-12 object-cover rounded-full border-2 border-primary/10 shadow-md"
+                  className="w-10 rounded-full border border-gray-200"
                 />
                 {onlineUsers.includes(user._id) && (
-                  <span
-                    className="absolute bottom-0 right-0 size-3 bg-green-500 
-                    rounded-full ring-2 ring-white dark:ring-gray-800"
-                  />
+                  <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full border border-white" />
                 )}
               </div>
-              <div className="hidden lg:block text-left min-w-0">
-                <div className="font-medium truncate text-base">{user.fullname}</div>
-                <div className="text-sm text-base-content/60">
-                  {onlineUsers.includes(user._id) ? "Online" : "Offline"}
-                </div>
+              <div className="hidden lg:block text-left">
+                <div className="font-medium text-gray-800 truncate">{user.fullname}</div>
+                <div className="text-xs text-gray-500">{onlineUsers.includes(user._id) ? "Online" : "Offline"}</div>
               </div>
             </button>
           ))
@@ -209,53 +160,45 @@ const Sidebar = () => {
 
       {isSearchOpen && authUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Add a Contact
-              </h3>
-              <button
-                onClick={() => setIsSearchOpen(false)}
-                className="btn btn-ghost btn-circle"
-              >
-                <X className="size-5 text-base-content/70" />
+          <div className="bg-white p-4 rounded-lg shadow-md w-full max-w-sm border border-gray-200">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Add Contact</h3>
+              <button onClick={() => setIsSearchOpen(false)} className="btn btn-ghost btn-circle">
+                <X className="size-5 text-gray-500" />
               </button>
             </div>
 
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-5 text-primary/60" />
+            <div className="relative mb-2">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 size-5 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search by username..."
-                className="input input-bordered w-full pl-10 py-6 rounded-xl transition-all duration-300 
-                focus:ring-4 focus:ring-primary/20 focus:border-primary"
+                className="input w-full pl-9 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus
               />
             </div>
 
-            <div className="max-h-64 overflow-y-auto space-y-2">
+            <div className="max-h-48 overflow-y-auto space-y-1">
               {searchResults.length > 0 ? (
                 searchResults.map((user) => (
                   <button
                     key={user._id}
                     onClick={() => handleAddUser(user)}
-                    className="w-full p-3 flex items-center gap-3 hover:bg-base-200 rounded-xl transition-all"
+                    className="w-full p-2 flex items-center gap-2 hover:bg-gray-100 rounded-md"
                   >
                     <img
                       src={user.profilepic || "/avatar.png"}
                       alt={user.fullname}
-                      className="size-10 object-cover rounded-full border border-primary/10"
+                      className="w-8 rounded-full border border-gray-200"
                     />
-                    <span className="font-medium">{user.fullname}</span>
+                    <span className="font-medium text-gray-800">{user.fullname}</span>
                   </button>
                 ))
               ) : (
                 searchQuery && (
-                  <div className="text-center text-base-content/50 py-4">
-                    No users found
-                  </div>
+                  <div className="text-center text-gray-500 py-1">No users found</div>
                 )
               )}
             </div>

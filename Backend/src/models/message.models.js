@@ -23,18 +23,6 @@ const  messageschema= new mongoose.Schema(
         filename:{
             type:String,
         },
-        scheduledAt: {
-            type: Date, 
-            default: null,
-          },
-          isScheduled: {
-            type: Boolean, 
-            default: false,
-          },
-          isSent: {
-             type: Boolean,
-              default: false 
-            },
     },
     {timestamps:true}
 )

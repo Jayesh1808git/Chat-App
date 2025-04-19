@@ -1,43 +1,31 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../Store/useAuthStore";
-import { LogOut, MessageSquare, Settings, User,Home } from "lucide-react";
+import { LogOut, MessageSquare, User } from "lucide-react";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
 
   return (
-    <header
-      className="bg-base-100 border-b border-base-300 fixed w-full top-0 z-40 
-    backdrop-blur-lg bg-base-100/80"
-    >
-      <div className="container mx-auto px-4 h-16">
+    <header className="bg-white border-b border-gray-200 fixed w-full top-0 z-40 bg-opacity-90">
+      <div className="container mx-auto px-4 h-12">
         <div className="flex items-center justify-between h-full">
-          <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-all">
-              <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-1 hover:opacity-80">
+              <div className="w-8 h-8 bg-blue-600/10 flex items-center justify-center rounded">
+                <MessageSquare className="w-5 h-5 text-blue-600" />
               </div>
-              <h1 className="text-lg font-bold">Chatty</h1>
+              <h1 className="text-lg font-bold text-gray-800">Chatty</h1>
             </Link>
           </div>
 
-          <div className="flex items-center gap-2">
-        
-
+          <div className="flex items-center gap-1">
             {authUser && (
               <>
-                <Link to={"/profile"} className={`btn btn-sm gap-2`}>
+                <Link to="/profile" className="p-1 text-gray-600 hover:text-blue-600">
                   <User className="size-5" />
-                  <span className="hidden sm:inline">Profile</span>
                 </Link>
-                <Link to={"/"} className={`btn btn-sm gap-2`}>
-                  <Home className="size-5" />
-                  <span className="hidden sm:inline">Home</span>
-                </Link>
-
-                <button className="flex gap-2 items-center" onClick={logout}>
+                <button className="p-1 text-gray-600 hover:text-blue-600" onClick={logout}>
                   <LogOut className="size-5" />
-                  <span className="hidden sm:inline">Logout</span>
                 </button>
               </>
             )}

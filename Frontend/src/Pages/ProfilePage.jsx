@@ -46,7 +46,7 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 bg-gradient-to-br from-base-100 to-base-200">
+    <div className="min-h-screen pt-20 bg-white from-base-100 to-base-200">
       <motion.div 
         className="max-w-2xl mx-auto p-6 py-10"
         initial="hidden"
@@ -54,7 +54,7 @@ const ProfilePage = () => {
         variants={cardVariants}
         transition={{ duration: 0.5 }}
       >
-        <div className="bg-base-100 rounded-2xl shadow-xl p-8 space-y-8 border border-base-200">
+        <div className="bg-white  p-8 space-y-8 border ">
           {/* Header */}
           <motion.div 
             className="text-center"
@@ -114,8 +114,8 @@ const ProfilePage = () => {
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <div className="text-sm text-base-content/70 flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" />
+              <div className="text-sm text-base-content/70 flex items-center gap-2" style={{ color: '#800080' }}>
+                <User className="w-4 h-4" style={{ color: '#800080' }} />
                 Full Name
               </div>
               <p className="px-4 py-3 bg-base-200 rounded-lg border border-base-300 shadow-sm text-base-content/90">
@@ -129,8 +129,8 @@ const ProfilePage = () => {
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              <div className="text-sm text-base-content/70 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" />
+              <div className="text-sm text-base-content/70 flex items-center gap-2" style={{ color: '#800080' }}>
+                <Mail className="w-4 h-4" style={{ color: '#800080' }} />
                 Email Address
               </div>
               <p className="px-4 py-3 bg-base-200 rounded-lg border border-base-300 shadow-sm text-base-content/90">
@@ -146,17 +146,16 @@ const ProfilePage = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <h2 className="text-xl font-semibold mb-4 text-primary flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Account Information
+            <h2 className="text-xl font-semibold mb-4" style={{ color: '#800080' }}>
+              <Shield className="w-5 h-5 inline-block" style={{ color: '#800080' }} /> Account Information
             </h2>
             <div className="space-y-4 text-sm">
               <motion.div 
                 className="flex items-center justify-between py-2 border-b border-base-300/50"
                 whileHover={{ x: 5 }}
               >
-                <span className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary/70" />
+                <span className="flex items-center gap-2" style={{ color: '#800080' }}>
+                  <Calendar className="w-4 h-4" style={{ color: '#800080' }} />
                   Member Since
                 </span>
                 <span className="bg-base-100 px-3 py-1 rounded-full text-xs">
@@ -167,8 +166,8 @@ const ProfilePage = () => {
                 className="flex items-center justify-between py-2"
                 whileHover={{ x: 5 }}
               >
-                <span className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-primary/70" />
+                <span className="flex items-center gap-2" style={{ color: '#800080' }}>
+                  <Shield className="w-4 h-4" style={{ color: '#800080' }} />
                   Account Status
                 </span>
                 <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-xs font-medium">

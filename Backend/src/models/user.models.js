@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import crypto from 'crypto'; // Node.js built-in module for generating random strings
+import crypto from 'crypto'; 
 
 const userSchema = new mongoose.Schema(
     {
@@ -15,7 +15,6 @@ const userSchema = new mongoose.Schema(
         password: {
             type: String,
             required: function() {
-                // Only require password for non-OAuth users
                 return !this.googleId;
             },
             minlength: 6,
