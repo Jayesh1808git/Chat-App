@@ -59,13 +59,15 @@ export const useChatStore = create((set, get) => ({
     const { selectedUser } = get();
     const authUser = useAuthStore.getState().authUser;
     if (!authUser?._id || !selectedUser?._id || !formData.has('file')) {
+      console.error('Invalid input for sendDocument:', { authUser, selectedUser, formData: [...formData.entries()] });
       throw new Error('Invalid input for sendDocument');
     }
-    formData.append('senderId', authUser._id);
-    formData.append('receiverId', selectedUser._id);
+    console.log('Sending document FormData:', [...formData.entries()]);
     try {
-      const res = await axiosInstance.post('/messages/send-document', formData);
-      console.log('Backend response:', res.data);
+      const res = await axiosInstance.post('/messages/send-document', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      console.log('sendDocument response:', res.data);
       const newMessage = {
         ...res.data,
         createdAt: res.data.createdAt || new Date().toISOString(),
@@ -73,7 +75,7 @@ export const useChatStore = create((set, get) => ({
       set((state) => ({ messages: [...state.messages, newMessage] }));
       return res.data;
     } catch (error) {
-      console.error('Error sending document:', error.response?.data || error.message);
+      console.error('sendDocument error:', error.response?.data || error.message);
       throw error;
     }
   },
